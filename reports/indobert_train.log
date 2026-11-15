@@ -1,0 +1,97 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Device: NVIDIA GeForce RTX 2060
+[transformers] [1mBertForSequenceClassification LOAD REPORT[0m from: indobenchmark/indobert-base-p1
+Key               | Status  | 
+------------------+---------+-
+classifier.bias   | MISSING | 
+classifier.weight | MISSING | 
+Notes:
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+{'loss': '0.5582', 'grad_norm': '5.87', 'learning_rate': '5.756e-06', 'epoch': '0.1453'}
+{'loss': '0.3374', 'grad_norm': '2.057', 'learning_rate': '8.663e-06', 'epoch': '0.218'}
+{'loss': '0.2572', 'grad_norm': '2.897', 'learning_rate': '1.157e-05', 'epoch': '0.2907'}
+{'loss': '0.219', 'grad_norm': '16.34', 'learning_rate': '1.448e-05', 'epoch': '0.3634'}
+{'loss': '0.2464', 'grad_norm': '9.973', 'learning_rate': '1.738e-05', 'epoch': '0.436'}
+{'loss': '0.2808', 'grad_norm': '4.384', 'learning_rate': '1.997e-05', 'epoch': '0.5087'}
+{'loss': '0.2611', 'grad_norm': '18.46', 'learning_rate': '1.964e-05', 'epoch': '0.5814'}
+{'loss': '0.237', 'grad_norm': '6.282', 'learning_rate': '1.932e-05', 'epoch': '0.6541'}
+{'loss': '0.1988', 'grad_norm': '7.069', 'learning_rate': '1.9e-05', 'epoch': '0.7267'}
+{'loss': '0.2285', 'grad_norm': '12.45', 'learning_rate': '1.868e-05', 'epoch': '0.7994'}
+{'loss': '0.209', 'grad_norm': '3.027', 'learning_rate': '1.835e-05', 'epoch': '0.8721'}
+{'loss': '0.2558', 'grad_norm': '7.484', 'learning_rate': '1.803e-05', 'epoch': '0.9448'}
+                                               [A{'eval_loss': '0.2168', 'eval_accuracy': '0.9294', 'eval_macro_f1': '0.899', 'eval_runtime': '1.916', 'eval_samples_per_second': '657.5', 'eval_steps_per_second': '10.44', 'epoch': '1'}
+{'loss': '0.1414', 'grad_norm': '2.495', 'learning_rate': '1.738e-05', 'epoch': '1.09'}
+{'loss': '0.1536', 'grad_norm': '9.203', 'learning_rate': '1.706e-05', 'epoch': '1.163'}
+{'loss': '0.1368', 'grad_norm': '9.157', 'learning_rate': '1.674e-05', 'epoch': '1.235'}
+{'loss': '0.1423', 'grad_norm': '3.837', 'learning_rate': '1.641e-05', 'epoch': '1.308'}
+{'loss': '0.1223', 'grad_norm': '20.23', 'learning_rate': '1.609e-05', 'epoch': '1.381'}
+{'loss': '0.1418', 'grad_norm': '1.408', 'learning_rate': '1.577e-05', 'epoch': '1.453'}
+{'loss': '0.1485', 'grad_norm': '11.2', 'learning_rate': '1.545e-05', 'epoch': '1.526'}
+{'loss': '0.1349', 'grad_norm': '7.032', 'learning_rate': '1.512e-05', 'epoch': '1.599'}
+{'loss': '0.1095', 'grad_norm': '0.5101', 'learning_rate': '1.48e-05', 'epoch': '1.672'}
+{'loss': '0.133', 'grad_norm': '7.957', 'learning_rate': '1.448e-05', 'epoch': '1.744'}
+{'loss': '0.1228', 'grad_norm': '1.954', 'learning_rate': '1.415e-05', 'epoch': '1.817'}
+{'loss': '0.1822', 'grad_norm': '1.939', 'learning_rate': '1.383e-05', 'epoch': '1.89'}
+{'loss': '0.1656', 'grad_norm': '3.786', 'learning_rate': '1.351e-05', 'epoch': '1.962'}
+                                               [A{'eval_loss': '0.208', 'eval_accuracy': '0.9302', 'eval_macro_f1': '0.899', 'eval_runtime': '1.925', 'eval_samples_per_second': '654.5', 'eval_steps_per_second': '10.39', 'epoch': '2'}
+{'loss': '0.03795', 'grad_norm': '0.01689', 'learning_rate': '1.286e-05', 'epoch': '2.108'}
+{'loss': '0.06081', 'grad_norm': '0.1746', 'learning_rate': '1.254e-05', 'epoch': '2.18'}
+{'loss': '0.05849', 'grad_norm': '11.42', 'learning_rate': '1.222e-05', 'epoch': '2.253'}
+{'loss': '0.06649', 'grad_norm': '0.0381', 'learning_rate': '1.189e-05', 'epoch': '2.326'}
+{'loss': '0.09123', 'grad_norm': '0.06897', 'learning_rate': '1.157e-05', 'epoch': '2.398'}
+{'loss': '0.07893', 'grad_norm': '0.03776', 'learning_rate': '1.125e-05', 'epoch': '2.471'}
+{'loss': '0.05991', 'grad_norm': '0.7308', 'learning_rate': '1.092e-05', 'epoch': '2.544'}
+{'loss': '0.04182', 'grad_norm': '45.37', 'learning_rate': '1.06e-05', 'epoch': '2.616'}
+{'loss': '0.06108', 'grad_norm': '9.051', 'learning_rate': '1.028e-05', 'epoch': '2.689'}
+{'loss': '0.07669', 'grad_norm': '0.3956', 'learning_rate': '9.955e-06', 'epoch': '2.762'}
+{'loss': '0.09941', 'grad_norm': '0.02918', 'learning_rate': '9.632e-06', 'epoch': '2.834'}
+{'loss': '0.06994', 'grad_norm': '0.02347', 'learning_rate': '9.309e-06', 'epoch': '2.907'}
+{'loss': '0.09145', 'grad_norm': '0.05229', 'learning_rate': '8.986e-06', 'epoch': '2.98'}
+                                               [A{'eval_loss': '0.2615', 'eval_accuracy': '0.9381', 'eval_macro_f1': '0.9126', 'eval_runtime': '1.948', 'eval_samples_per_second': '646.8', 'eval_steps_per_second': '10.27', 'epoch': '3'}
+{'loss': '0.01855', 'grad_norm': '0.01595', 'learning_rate': '8.34e-06', 'epoch': '3.125'}
+{'loss': '0.05979', 'grad_norm': '20.81', 'learning_rate': '8.017e-06', 'epoch': '3.198'}
+{'loss': '0.03551', 'grad_norm': '14.91', 'learning_rate': '7.694e-06', 'epoch': '3.27'}
+{'loss': '0.02459', 'grad_norm': '0.0135', 'learning_rate': '7.371e-06', 'epoch': '3.343'}
+{'loss': '0.05168', 'grad_norm': '0.05033', 'learning_rate': '7.048e-06', 'epoch': '3.416'}
+{'loss': '0.0153', 'grad_norm': '0.04563', 'learning_rate': '6.725e-06', 'epoch': '3.488'}
+{'loss': '0.02301', 'grad_norm': '0.3661', 'learning_rate': '6.402e-06', 'epoch': '3.561'}
+{'loss': '0.04236', 'grad_norm': '0.1256', 'learning_rate': '6.079e-06', 'epoch': '3.634'}
+{'loss': '0.02728', 'grad_norm': '2.401', 'learning_rate': '5.756e-06', 'epoch': '3.706'}
+{'loss': '0.01749', 'grad_norm': '0.02087', 'learning_rate': '5.433e-06', 'epoch': '3.779'}
+{'loss': '0.03493', 'grad_norm': '0.1364', 'learning_rate': '5.11e-06', 'epoch': '3.852'}
+{'loss': '0.0148', 'grad_norm': '0.01492', 'learning_rate': '4.787e-06', 'epoch': '3.924'}
+{'loss': '0.04219', 'grad_norm': '0.01656', 'learning_rate': '4.464e-06', 'epoch': '3.997'}
+                                               [A{'eval_loss': '0.2885', 'eval_accuracy': '0.9413', 'eval_macro_f1': '0.9142', 'eval_runtime': '2.026', 'eval_samples_per_second': '622', 'eval_steps_per_second': '9.874', 'epoch': '4'}
+{'loss': '0.01022', 'grad_norm': '0.008682', 'learning_rate': '3.818e-06', 'epoch': '4.142'}
+{'loss': '0.002595', 'grad_norm': '0.9271', 'learning_rate': '3.495e-06', 'epoch': '4.215'}
+{'loss': '0.02529', 'grad_norm': '0.01329', 'learning_rate': '3.172e-06', 'epoch': '4.288'}
+{'loss': '0.0105', 'grad_norm': '0.02362', 'learning_rate': '2.849e-06', 'epoch': '4.36'}
+{'loss': '0.01159', 'grad_norm': '0.005162', 'learning_rate': '2.526e-06', 'epoch': '4.433'}
+{'loss': '0.0365', 'grad_norm': '0.009505', 'learning_rate': '2.203e-06', 'epoch': '4.506'}
+{'loss': '0.007686', 'grad_norm': '0.01085', 'learning_rate': '1.88e-06', 'epoch': '4.578'}
+{'loss': '0.01475', 'grad_norm': '0.01669', 'learning_rate': '1.557e-06', 'epoch': '4.651'}
+{'loss': '0.006482', 'grad_norm': '0.008025', 'learning_rate': '1.234e-06', 'epoch': '4.724'}
+{'loss': '0.007546', 'grad_norm': '3.16', 'learning_rate': '9.109e-07', 'epoch': '4.797'}
+{'loss': '0.001473', 'grad_norm': '0.01781', 'learning_rate': '5.879e-07', 'epoch': '4.869'}
+{'loss': '0.02152', 'grad_norm': '0.02846', 'learning_rate': '2.649e-07', 'epoch': '4.942'}
+                                               [A{'eval_loss': '0.2946', 'eval_accuracy': '0.946', 'eval_macro_f1': '0.9246', 'eval_runtime': '1.929', 'eval_samples_per_second': '653.2', 'eval_steps_per_second': '10.37', 'epoch': '5'}
+{'train_runtime': '502.3', 'train_samples_per_second': '109.5', 'train_steps_per_second': '6.849', 'train_loss': '0.1158', 'epoch': '5'}
+Model terbaik disimpan ke models\indobert-smsa
+=== TEST ===
+              precision    recall  f1-score   support
+    negative     0.9095    0.9853    0.9459       204
+     neutral     0.8971    0.6932    0.7821        88
+    positive     0.9242    0.9375    0.9308       208
+    accuracy                         0.9140       500
+   macro avg     0.9102    0.8720    0.8862       500
+weighted avg     0.9134    0.9140    0.9108       500
+Confusion matrix (baris=asli, kolom=prediksi) urutan ['negative', 'neutral', 'positive']
+  negative  [201, 0, 3]
+  neutral   [14, 61, 13]
+  positive  [6, 7, 195]
+Metrik disimpan ke reports\indobert_metrics.json
+Waktu training: 8.4 menit | inferensi: 3.36 ms/sampel
+=== Contoh prediksi ===
+[positive 99.98%] makanannya enak banget, pelayanannya juga ramah. pasti balik lagi!
+[negative 99.95%] pesanan datang terlambat dan makanannya sudah dingin. kecewa.
+[neutral 97.20%] toko ini buka jam 9 pagi sampai jam 9 malam.

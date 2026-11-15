@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Data (unduh ulang dengan scripts/download_data.py)
+data/raw/
+
+# Model besar (476 MB, di atas batas 100 MB GitHub) — tersedia di Hugging Face Hub
+models/indobert-smsa/
+models/_*/
+
+# Hasil build deploy
+dist/
+
+# Lokal
+.claude/
+.vscode/
+.idea/

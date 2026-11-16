@@ -5,6 +5,7 @@ Jalankan dari root proyek:
 Dokumentasi interaktif: http://localhost:8000/docs
 """
 import json
+import logging
 import time
 from contextlib import asynccontextmanager
 from enum import Enum
@@ -14,11 +15,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from src import baseline
-from src.indobert import MODEL_DIR as INDOBERT_DIR
+from src.data import MAX_BATCH, MAX_TEXT_CHARS
+from src.indobert import MODEL_SOURCE as INDOBERT_SOURCE
+from src.indobert import model_configured as indobert_configured
 
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
-MAX_TEXT_CHARS = 2000
-MAX_BATCH = 64
+logger = logging.getLogger("uvicorn.error")
 
 
 class ModelName(str, Enum):
@@ -82,11 +84,20 @@ MODELS: dict = {}
 
 def load_models() -> None:
     MODELS["baseline"] = baseline.load_model()
-    if INDOBERT_DIR.exists():
+    # IndoBERT opsional: folder lokal models/indobert-smsa atau repo Hub lewat env INDOBERT_MODEL.
+    # Kalau tidak ada / gagal dimuat, API tetap jalan dengan baseline saja.
+    if not indobert_configured():
+        logger.warning("Model IndoBERT tidak ditemukan (%s); API hanya memakai baseline.", INDOBERT_SOURCE)
+        return
+    try:
         from src.indobert import IndoBertSentiment
 
-        MODELS["indobert"] = IndoBertSentiment(INDOBERT_DIR)
-        MODELS["indobert"].predict(["pemanasan model"])  # warm-up CUDA agar request pertama tidak lambat
+        model = IndoBertSentiment(INDOBERT_SOURCE)
+        model.predict(["pemanasan model"])  # warm-up CUDA agar request pertama tidak lambat
+    except Exception:
+        logger.exception("Gagal memuat IndoBERT dari %s; API hanya memakai baseline.", INDOBERT_SOURCE)
+        return
+    MODELS["indobert"] = model
 
 
 @asynccontextmanager
@@ -116,7 +127,10 @@ def _run(name: str, texts: list[str]) -> tuple[list[dict], float]:
 
 
 def _selected(model: ModelName) -> list[str]:
-    return ["baseline", "indobert"] if model == ModelName.both else [model.value]
+    if model != ModelName.both:
+        return [model.value]  # model yang diminta eksplisit tapi tidak dimuat -> 503 di _run()
+    # "both" = semua model yang sedang dimuat, supaya baseline tetap melayani walau IndoBERT absen.
+    return [m for m in ("baseline", "indobert") if m in MODELS]
 
 
 @app.get("/health")

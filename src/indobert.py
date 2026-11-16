@@ -14,6 +14,11 @@ MODEL_SOURCE = os.getenv("INDOBERT_MODEL") or str(MODEL_DIR)
 MAX_LENGTH = 128
 
 
+def model_configured() -> bool:
+    """True jika ada model IndoBERT untuk dimuat: env INDOBERT_MODEL diset atau folder lokal ada."""
+    return bool(os.getenv("INDOBERT_MODEL")) or MODEL_DIR.exists()
+
+
 class SmsaTorchDataset(Dataset):
     """Teks yang sudah di-tokenize + label_id, untuk dipakai Trainer."""
 

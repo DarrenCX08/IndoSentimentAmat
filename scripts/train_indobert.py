@@ -29,7 +29,14 @@ from transformers import (  # noqa: E402
 )
 
 from src.data import LABELS, load_smsa  # noqa: E402
-from src.indobert import BASE_MODEL, MODEL_DIR, IndoBertSentiment, SmsaTorchDataset, load_base_model  # noqa: E402
+from src.indobert import (  # noqa: E402
+    BASE_MODEL,
+    MAX_LENGTH,
+    MODEL_DIR,
+    IndoBertSentiment,
+    SmsaTorchDataset,
+    load_base_model,
+)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=5)
@@ -139,7 +146,7 @@ infer_ms_per_sample = (time.perf_counter() - start) / len(test) * 1000
 history = [h for h in trainer.state.log_history if "eval_macro_f1" in h]
 metrics = {
     "model": BASE_MODEL,
-    "hyperparams": {"epochs": args.epochs, "lr": args.lr, "batch_size": args.batch_size, "max_length": 128, "seed": args.seed},
+    "hyperparams": {"epochs": args.epochs, "lr": args.lr, "batch_size": args.batch_size, "max_length": MAX_LENGTH, "seed": args.seed},
     "best_epoch_valid_macro_f1": trainer.state.best_metric,
     "epochs_trained": trainer.state.epoch,
     "device": torch.cuda.get_device_name(0) if use_gpu else "cpu",

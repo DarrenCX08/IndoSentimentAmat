@@ -92,6 +92,10 @@ curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
 Respons berisi `label`, `confidence`, dan probabilitas tiap kelas untuk masing-masing model,
 beserta latensinya. Endpoint lain: `GET /health`, `GET /models`, `POST /predict/batch`.
 
+Kalau model IndoBERT tidak tersedia, API dan demo Streamlit tetap jalan dengan baseline saja:
+`"model": "both"` mengembalikan model yang dimuat (lihat `GET /health`), sedangkan
+`"model": "indobert"` mengembalikan 503. Tes yang butuh IndoBERT otomatis di-skip.
+
 ## Model IndoBERT
 
 File model hasil fine-tuning (476 MB) tidak disimpan di repo ini, karena melebihi batas

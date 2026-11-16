@@ -2,11 +2,13 @@
 
 Memanggil API FastAPI (env SENTIMENT_API_URL, default http://localhost:8000). Jika API tidak
 bisa dihubungi, model dimuat langsung di proses ini — jadi app juga bisa jalan sendiri
-(mis. di Hugging Face Spaces).
+(mis. di Hugging Face Spaces). Kalau model IndoBERT tidak tersedia, app tetap jalan dengan
+baseline saja.
 
 Jalankan dari root proyek:
     .venv/Scripts/python.exe -m streamlit run app/streamlit_app.py
 """
+import io
 import json
 import os
 import sys
@@ -21,6 +23,8 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from src.data import MAX_BATCH, MAX_TEXT_CHARS  # noqa: E402
+
 # Kosongkan (SENTIMENT_API_URL="") untuk selalu memakai model lokal, mis. di Hugging Face Spaces.
 API_URL = os.getenv("SENTIMENT_API_URL", "http://localhost:8000").rstrip("/")
 REPORTS = ROOT / "reports"
@@ -29,7 +33,7 @@ LABEL_ID = {"negative": "😞 Negatif", "neutral": "😐 Netral", "positive": "�
 MODEL_NAMES = {"baseline": "TF-IDF + LogReg", "indobert": "IndoBERT"}
 # Warna kategorikal tetap per model (slot 1 & 2 palet referensi) — tidak pernah berganti.
 MODEL_COLORS = {"TF-IDF + LogReg": "#2a78d6", "IndoBERT": "#eb6834"}
-MAX_BATCH = 64
+MAX_ROWS = 1000  # batas jumlah review per batch di demo
 EXAMPLES = [
     "pengirimannya cepat, packing rapi, barang original. mantap!",
     "barangnya sesuai deskripsi",
@@ -43,46 +47,74 @@ st.set_page_config(page_title="Sentimen Review Indonesia", page_icon="💬", lay
 
 # ---------- Backend: API dengan fallback model lokal ----------
 @st.cache_data(ttl=30, show_spinner=False)
-def api_available() -> bool:
+def api_models() -> list[str]:
+    """Model yang dimuat API, atau [] kalau API tidak bisa dipakai (minimal butuh baseline)."""
     if not API_URL:
-        return False
+        return []
     try:
         r = requests.get(f"{API_URL}/health", timeout=2)
-        return r.ok and set(r.json().get("models_loaded", [])) >= {"baseline", "indobert"}
-    except requests.RequestException:
-        return False
+        loaded = r.json().get("models_loaded", []) if r.ok else []
+    except (requests.RequestException, ValueError):
+        return []
+    return [m for m in MODEL_NAMES if m in loaded] if "baseline" in loaded else []
 
 
 @st.cache_resource(show_spinner="Memuat model lokal…")
-def local_models() -> dict:
+def local_models() -> tuple[dict, str | None]:
+    """-> (model yang berhasil dimuat, alasan IndoBERT tidak tersedia atau None)."""
     from src import baseline
-    from src.indobert import IndoBertSentiment
+    from src.indobert import MODEL_SOURCE, IndoBertSentiment, model_configured
 
-    return {"baseline": baseline.load_model(), "indobert": IndoBertSentiment()}
+    models = {"baseline": baseline.load_model()}
+    if not model_configured():
+        return models, f"model tidak ditemukan di `{MODEL_SOURCE}`"
+    try:
+        models["indobert"] = IndoBertSentiment()
+    except Exception as e:  # noqa: BLE001 — app tetap jalan dengan baseline
+        return models, f"gagal dimuat dari `{MODEL_SOURCE}` ({type(e).__name__})"
+    return models, None
+
+
+def available_models() -> list[str]:
+    return api_models() or [m for m in MODEL_NAMES if m in local_models()[0]]
+
+
+def _predict_api(chunk: list[str]) -> dict[str, dict]:
+    r = requests.post(f"{API_URL}/predict/batch", json={"texts": chunk, "model": "both"}, timeout=60)
+    r.raise_for_status()
+    return {o["model"]: o for o in r.json()["results"]}
+
+
+def _predict_local(chunk: list[str]) -> dict[str, dict]:
+    from src import baseline
+
+    results = {}
+    for name, model in local_models()[0].items():
+        start = time.perf_counter()
+        preds = baseline.predict(model, chunk) if name == "baseline" else model.predict(chunk)
+        results[name] = {"predictions": preds, "latency_ms": (time.perf_counter() - start) * 1000}
+    return results
+
+
+def _predict_chunks(texts: list[str], fn) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for i in range(0, len(texts), MAX_BATCH):
+        for name, r in fn(texts[i:i + MAX_BATCH]).items():
+            o = out.setdefault(name, {"predictions": [], "latency_ms": 0.0})
+            o["predictions"] += r["predictions"]
+            o["latency_ms"] += r["latency_ms"]
+    return {m: out[m] for m in MODEL_NAMES if m in out}  # urutan tetap: baseline, indobert
 
 
 def predict(texts: list[str]) -> dict[str, dict]:
-    """-> {model: {"predictions": [...], "latency_ms": float}} untuk kedua model."""
-    out = {m: {"predictions": [], "latency_ms": 0.0} for m in MODEL_NAMES}
-    for i in range(0, len(texts), MAX_BATCH):
-        chunk = texts[i:i + MAX_BATCH]
-        if api_available():
-            r = requests.post(f"{API_URL}/predict/batch", json={"texts": chunk, "model": "both"}, timeout=60)
-            r.raise_for_status()
-            results = {o["model"]: o for o in r.json()["results"]}
-        else:
-            from src import baseline
-
-            models, results = local_models(), {}
-            for name in MODEL_NAMES:
-                start = time.perf_counter()
-                preds = (baseline.predict(models[name], chunk) if name == "baseline"
-                         else models[name].predict(chunk))
-                results[name] = {"predictions": preds, "latency_ms": (time.perf_counter() - start) * 1000}
-        for name in MODEL_NAMES:
-            out[name]["predictions"] += results[name]["predictions"]
-            out[name]["latency_ms"] += results[name]["latency_ms"]
-    return out
+    """-> {model: {"predictions": [...], "latency_ms": float}} untuk tiap model yang tersedia."""
+    if api_models():
+        try:
+            return _predict_chunks(texts, _predict_api)
+        except (requests.RequestException, ValueError, KeyError) as e:
+            api_models.clear()  # cek ulang /health di rerun berikutnya
+            st.toast(f"API gagal ({type(e).__name__}), beralih ke model lokal.", icon="⚠️")
+    return _predict_chunks(texts, _predict_local)
 
 
 @st.cache_data(show_spinner=False)
@@ -90,6 +122,20 @@ def load_metrics() -> dict:
     files = {"baseline": "baseline_metrics.json", "indobert": "indobert_metrics.json"}
     return {m: json.loads((REPORTS / f).read_text(encoding="utf-8")) for m, f in files.items()
             if (REPORTS / f).exists()}
+
+
+def read_csv_upload(upload) -> pd.DataFrame:
+    """Baca CSV unggahan: UTF-8 (dengan/tanpa BOM) atau cp1252, pemisah `,` atau `;` (Excel lokal ID)."""
+    raw = upload.getvalue()
+    try:
+        content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        content = raw.decode("cp1252", errors="replace")
+    df = pd.read_csv(io.StringIO(content))
+    if "text" not in df.columns.str.strip().str.lower() and ";" in content.split("\n", 1)[0]:
+        df = pd.read_csv(io.StringIO(content), sep=";")
+    df.columns = df.columns.str.strip().str.lower()
+    return df
 
 
 def model_color_scale():
@@ -102,11 +148,19 @@ st.caption(
     "Membandingkan baseline **TF-IDF + Logistic Regression** dengan **IndoBERT** "
     "(`indobenchmark/indobert-base-p1`, fine-tuned pada dataset SmSA/IndoNLU)."
 )
-if api_available():
+if api_models():
     backend = f"API `{API_URL}`"
 else:
     backend = "model lokal" + (" (API tidak terhubung)" if API_URL else "")
 st.caption(f"Backend: {backend}")
+
+models_ready = available_models()
+if "indobert" not in models_ready:
+    reason = "" if api_models() else f": {local_models()[1]}"
+    st.warning(
+        f"IndoBERT tidak tersedia{reason}. Hanya baseline yang dipakai. Latih dengan "
+        "`scripts/train_indobert.py` atau set env `INDOBERT_MODEL=<user>/<repo>` (lihat DEPLOY.md)."
+    )
 
 tab_single, tab_batch, tab_compare = st.tabs(["🔍 Coba Prediksi", "📄 Batch", "📊 Perbandingan Model"])
 
@@ -121,16 +175,21 @@ with tab_single:
         if col.button(ex if len(ex) <= 28 else ex[:26] + "…", help=ex, width="stretch"):
             st.session_state.text = ex
 
-    text = st.text_area("Tulis review", key="text", height=100, max_chars=2000)
+    text = st.text_area("Tulis review", key="text", height=100, max_chars=MAX_TEXT_CHARS)
 
     if not text.strip():
         st.info("Tulis sebuah review untuk melihat prediksinya.")
     else:
-        with st.spinner("Memprediksi…"):
-            res = predict([text])
+        # Semua tab dieksekusi tiap rerun; simpan hasil terakhir supaya interaksi di tab lain
+        # (mis. tombol batch) tidak memicu prediksi ulang teks yang sama.
+        if st.session_state.get("single_key") != (text, tuple(models_ready)):
+            with st.spinner("Memprediksi…"):
+                st.session_state.single_res = predict([text])
+            st.session_state.single_key = (text, tuple(models_ready))
+        res = st.session_state.single_res
+        shown = list(res)
 
-        c1, c2 = st.columns(2)
-        for col, name in zip((c1, c2), MODEL_NAMES):
+        for col, name in zip(st.columns(len(shown)), shown):
             p = res[name]["predictions"][0]
             with col.container(border=True):
                 st.markdown(f"**{MODEL_NAMES[name]}**")
@@ -138,13 +197,14 @@ with tab_single:
                 st.progress(p["confidence"], text=f"Confidence {p['confidence']:.1%}")
                 st.caption(f"Latensi: {res[name]['latency_ms']:.1f} ms")
 
-        b, i = (res[m]["predictions"][0]["label"] for m in MODEL_NAMES)
-        if b != i:
-            st.warning(f"Kedua model **berbeda pendapat**: baseline → {LABEL_ID[b]}, IndoBERT → {LABEL_ID[i]}.")
+        if len(shown) == 2:
+            b, i = (res[m]["predictions"][0]["label"] for m in shown)
+            if b != i:
+                st.warning(f"Kedua model **berbeda pendapat**: baseline → {LABEL_ID[b]}, IndoBERT → {LABEL_ID[i]}.")
 
         rows = [
             {"Model": MODEL_NAMES[m], "Kelas": LABEL_ID[k], "Probabilitas": v}
-            for m in MODEL_NAMES for k, v in res[m]["predictions"][0]["probabilities"].items()
+            for m in shown for k, v in res[m]["predictions"][0]["probabilities"].items()
         ]
         chart = (
             alt.Chart(pd.DataFrame(rows), title="Probabilitas tiap kelas")
@@ -168,53 +228,82 @@ with tab_batch:
     upload = st.file_uploader("…atau unggah CSV", type="csv")
 
     if st.button("Prediksi semua", type="primary"):
+        st.session_state.pop("batch", None)
+        texts, error = [], None
         if upload is not None:
-            df_in = pd.read_csv(upload)
-            if "text" not in df_in.columns:
-                st.error("CSV harus punya kolom `text`.")
-                st.stop()
-            texts = df_in["text"].astype(str).tolist()
+            try:
+                df_in = read_csv_upload(upload)
+            except (pd.errors.ParserError, pd.errors.EmptyDataError) as e:
+                df_in, error = None, f"CSV tidak bisa dibaca: {e}"
+            if df_in is not None and "text" not in df_in.columns:
+                error = "CSV harus punya kolom `text`."
+            elif df_in is not None:
+                texts = df_in["text"].dropna().astype(str).tolist()  # sel kosong bukan review "nan"
         else:
-            texts = [t for t in raw.splitlines() if t.strip()]
-        texts = [t[:2000] for t in texts if t.strip()][:1000]
+            texts = raw.splitlines()
 
-        if not texts:
+        texts = [t.strip() for t in texts if t.strip()]
+        notes = []
+        if len(texts) > MAX_ROWS:
+            notes.append(f"Hanya {MAX_ROWS} dari {len(texts)} review pertama yang diproses.")
+            texts = texts[:MAX_ROWS]
+        n_long = sum(len(t) > MAX_TEXT_CHARS for t in texts)
+        if n_long:
+            notes.append(f"{n_long} review dipotong ke {MAX_TEXT_CHARS} karakter.")
+            texts = [t[:MAX_TEXT_CHARS] for t in texts]
+
+        if error:
+            st.error(error)
+        elif not texts:
             st.info("Tidak ada teks untuk diprediksi.")
         else:
             with st.spinner(f"Memprediksi {len(texts)} review…"):
                 res = predict(texts)
             df = pd.DataFrame({"text": texts})
-            for m in MODEL_NAMES:
+            for m in res:
                 df[f"{m}_label"] = [p["label"] for p in res[m]["predictions"]]
                 df[f"{m}_confidence"] = [round(p["confidence"], 4) for p in res[m]["predictions"]]
-            df["sepakat"] = df["baseline_label"] == df["indobert_label"]
+            if len(res) == 2:
+                df["sepakat"] = df["baseline_label"] == df["indobert_label"]
+            # Disimpan di session_state supaya hasil tidak hilang saat rerun (mis. klik tombol unduh).
+            st.session_state.batch = {
+                "df": df, "models": list(res), "notes": notes,
+                "latency": {m: res[m]["latency_ms"] for m in res},
+            }
 
-            a, b, c = st.columns(3)
-            a.metric("Jumlah review", len(df))
+    batch = st.session_state.get("batch")
+    if batch:
+        df, shown = batch["df"], batch["models"]
+        for note in batch["notes"]:
+            st.info(note)
+
+        a, b, c = st.columns(3)
+        a.metric("Jumlah review", len(df))
+        if "sepakat" in df:
             b.metric("Model sepakat", f"{df['sepakat'].mean():.0%}")
-            c.metric("Latensi total (base / IndoBERT)",
-                     f"{res['baseline']['latency_ms']:.0f} / {res['indobert']['latency_ms']:.0f} ms")
+        c.metric("Latensi total (" + " / ".join(MODEL_NAMES[m] for m in shown) + ")",
+                 " / ".join(f"{batch['latency'][m]:.0f}" for m in shown) + " ms")
 
-            dist = pd.DataFrame([
-                {"Model": MODEL_NAMES[m], "Kelas": LABEL_ID[l], "Jumlah": int((df[f"{m}_label"] == l).sum())}
-                for m in MODEL_NAMES for l in LABELS
-            ])
-            st.altair_chart(
-                alt.Chart(dist, title="Distribusi prediksi")
-                .mark_bar(cornerRadiusEnd=4)
-                .encode(
-                    x=alt.X("Kelas:N", sort=[LABEL_ID[l] for l in LABELS], title=None, axis=alt.Axis(labelAngle=0)),
-                    xOffset=alt.XOffset("Model:N", sort=list(MODEL_COLORS)),
-                    y=alt.Y("Jumlah:Q", title="Jumlah review", axis=alt.Axis(tickMinStep=1)),
-                    color=alt.Color("Model:N", scale=model_color_scale(), legend=alt.Legend(orient="top", title=None)),
-                    tooltip=["Model", "Kelas", "Jumlah"],
-                )
-                .properties(height=260),
-                width="stretch",
+        dist = pd.DataFrame([
+            {"Model": MODEL_NAMES[m], "Kelas": LABEL_ID[l], "Jumlah": int((df[f"{m}_label"] == l).sum())}
+            for m in shown for l in LABELS
+        ])
+        st.altair_chart(
+            alt.Chart(dist, title="Distribusi prediksi")
+            .mark_bar(cornerRadiusEnd=4)
+            .encode(
+                x=alt.X("Kelas:N", sort=[LABEL_ID[l] for l in LABELS], title=None, axis=alt.Axis(labelAngle=0)),
+                xOffset=alt.XOffset("Model:N", sort=list(MODEL_COLORS)),
+                y=alt.Y("Jumlah:Q", title="Jumlah review", axis=alt.Axis(tickMinStep=1)),
+                color=alt.Color("Model:N", scale=model_color_scale(), legend=alt.Legend(orient="top", title=None)),
+                tooltip=["Model", "Kelas", "Jumlah"],
             )
-            st.dataframe(df, width="stretch", hide_index=True)
-            st.download_button("⬇️ Unduh hasil (CSV)", df.to_csv(index=False).encode("utf-8"),
-                               "hasil_sentimen.csv", "text/csv")
+            .properties(height=260),
+            width="stretch",
+        )
+        st.dataframe(df, width="stretch", hide_index=True)
+        st.download_button("⬇️ Unduh hasil (CSV)", df.to_csv(index=False).encode("utf-8-sig"),
+                           "hasil_sentimen.csv", "text/csv")
 
 # ---------- Tab 3: perbandingan ----------
 with tab_compare:

@@ -10,6 +10,10 @@ LABELS = ["negative", "neutral", "positive"]
 LABEL2ID = {label: i for i, label in enumerate(LABELS)}
 ID2LABEL = {i: label for label, i in LABEL2ID.items()}
 
+# Batas input yang dipakai bersama oleh API dan demo Streamlit.
+MAX_TEXT_CHARS = 2000
+MAX_BATCH = 64
+
 
 def load_smsa(split: str = "train") -> pd.DataFrame:
     """Kembalikan DataFrame dengan kolom `text`, `label`, `label_id` untuk split train/valid/test."""
